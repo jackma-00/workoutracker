@@ -198,4 +198,13 @@ describe("NotesApp", () => {
     expect(within(dialog).getByText(/Line one/)).toBeInTheDocument();
     expect(within(dialog).getByText(/Pinned in Current/)).toBeInTheDocument();
   });
+
+  it("restores the last selected tab on reload", async () => {
+    window.localStorage.setItem("tracker.activeTab.v1", "WORKOUT");
+
+    render(<NotesApp />);
+
+    await waitFor(() => expect(mockedListNotes).toHaveBeenCalled());
+    expect(screen.getByRole("heading", { level: 2, name: "Workout" })).toBeInTheDocument();
+  });
 });

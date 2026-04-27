@@ -185,30 +185,61 @@ export function NotesApp() {
   useLayoutEffect(() => {
     const listElement = listRef.current;
     if (!listElement || notes.length === 0) {
+      setCardSpans({});
       return;
     }
 
-    const styles = window.getComputedStyle(listElement);
-    const autoRows = parseInt(styles.getPropertyValue("grid-auto-rows"), 10);
-    const rowGap = parseInt(styles.getPropertyValue("row-gap"), 10);
+    const recalculateCardSpans = () => {
+      const styles = window.getComputedStyle(listElement);
+      const autoRows = parseFloat(styles.getPropertyValue("grid-auto-rows"));
+      const rowGap = parseFloat(styles.getPropertyValue("row-gap")) || 0;
 
-    if (!autoRows) {
-      return;
-    }
-
-    const nextSpans: Record<number, number> = {};
-    notes.forEach((note) => {
-      const cardElement = cardRefs.current[note.id];
-      if (!cardElement) {
+      if (!autoRows) {
         return;
       }
 
-      const cardHeight = cardElement.getBoundingClientRect().height;
-      const span = Math.max(1, Math.ceil((cardHeight + rowGap) / (autoRows + rowGap)));
-      nextSpans[note.id] = span;
-    });
+      const nextSpans: Record<number, number> = {};
+      notes.forEach((note) => {
+        const cardElement = cardRefs.current[note.id];
+        if (!cardElement) {
+          return;
+        }
 
-    setCardSpans(nextSpans);
+        const cardHeight = cardElement.offsetHeight;
+        const span = Math.max(1, Math.ceil((cardHeight + rowGap) / (autoRows + rowGap)));
+        nextSpans[note.id] = span;
+      });
+
+      setCardSpans(nextSpans);
+    };
+
+    recalculateCardSpans();
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            recalculateCardSpans();
+          })
+        : null;
+
+    if (resizeObserver) {
+      resizeObserver.observe(listElement);
+      notes.forEach((note) => {
+        const cardElement = cardRefs.current[note.id];
+        if (cardElement) {
+          resizeObserver.observe(cardElement);
+        }
+      });
+    }
+
+    window.addEventListener("resize", recalculateCardSpans);
+
+    return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      window.removeEventListener("resize", recalculateCardSpans);
+    };
   }, [notes, activeTab]);
 
   return (

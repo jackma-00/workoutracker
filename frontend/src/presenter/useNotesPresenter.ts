@@ -1,7 +1,26 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { createNote, deleteNote, listNotes, updateNote, updatePin } from "../model/noteApi";
 import { Note, NoteCreatePayload, NoteTab, NoteUpdatePayload } from "../model/note";
+
+const ACTIVE_TAB_STORAGE_KEY = "tracker.activeTab.v1";
+
+function isNoteTab(value: unknown): value is NoteTab {
+  return value === "WORKOUT" || value === "DIET" || value === "CURRENT";
+}
+
+function getInitialActiveTab(): NoteTab {
+  if (typeof window === "undefined") {
+    return "CURRENT";
+  }
+
+  const storedTab = window.localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+  if (isNoteTab(storedTab)) {
+    return storedTab;
+  }
+
+  return "CURRENT";
+}
 
 function getSortDate(note: Note): number {
   const createdAt = new Date(note.created_at).getTime();
@@ -14,7 +33,7 @@ function sortNotes(noteList: Note[]): Note[] {
 }
 
 export function useNotesPresenter() {
-  const [activeTab, setActiveTab] = useState<NoteTab>("CURRENT");
+  const [activeTab, setActiveTab] = useState<NoteTab>(getInitialActiveTab);
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
@@ -126,6 +145,12 @@ export function useNotesPresenter() {
     setActionError(null);
     setStatusMessage(null);
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+    }
+  }, [activeTab]);
 
   return {
     activeTab,
